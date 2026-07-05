@@ -1,0 +1,13 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Regenerable data caches (rebuilt from Norgate; personal-use licence — the
+# spliced panel embeds vendor series values, so it must never be committed)
+data/
+
+# Local editor / OS
+.DS_Store
+Thumbs.db

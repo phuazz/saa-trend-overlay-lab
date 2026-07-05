@@ -1,0 +1,6 @@
+pandas>=2.2
+numpy>=1.26
+scipy>=1.11
+matplotlib>=3.8
+norgatedata>=1.0.74
+pytest>=8.0
