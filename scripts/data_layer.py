@@ -107,7 +107,8 @@ def _flag(kind: str, corr: float, beta: float) -> str:
 
 
 def build_block(b: Block) -> dict:
-    etf_ret = _monthly_returns(io.etf_tr_daily(b.etf))
+    etf_daily = io.etf_tr_daily(b.etf)
+    etf_ret = _monthly_returns(etf_daily)
     proxy_ret, proxy_name = _proxy_monthly_returns(b)
 
     splice_month = etf_ret.index[0]          # first full ETF return month
@@ -147,7 +148,8 @@ def build_block(b: Block) -> dict:
         "recon_corr": round(corr, 3) if corr == corr else None,
         "recon_tracking_err_ann": round(te_ann, 4) if te_ann == te_ann else None,
         "recon_flag": _flag(b.proxy_kind, corr, beta) if corr == corr else "n/a",
-        "_level": level, "_labels": labels,  # popped before JSON
+        "_level": level, "_labels": labels,
+        "_last_daily": etf_daily.index[-1],  # popped before JSON
     }
 
 
@@ -156,6 +158,18 @@ def main() -> int:
     io.status_or_die()
 
     rows = [build_block(b) for b in BLOCKS]
+
+    # Drop any trailing INCOMPLETE month: a monthly bucket is kept only once its
+    # month-end has actually elapsed in the data (label <= latest real daily bar).
+    # Stops a partial current month carrying a future-dated month-end label into
+    # the metrics (vault date rule). pandas Timestamps compared directly.
+    cutoff = max(r["_last_daily"] for r in rows)
+    for r in rows:
+        r["_level"] = r["_level"][r["_level"].index <= cutoff]
+        r["_labels"] = r["_labels"][r["_labels"].index <= cutoff]
+        r["series_end"] = str(r["_level"].index[-1].date())
+        r["n_months"] = int(len(r["_level"]))
+        r["n_proxy_months"] = int((r["_labels"] == "PROXY").sum())
 
     # assemble the monthly TR-level panel
     panel = pd.DataFrame({r["block"]: r["_level"] for r in rows}).sort_index()
@@ -178,7 +192,7 @@ def main() -> int:
     print(f"panel: {panel.shape[0]} months x {panel.shape[1]} blocks -> {OUT_PANEL.relative_to(ROOT)}")
 
     for r in rows:
-        r.pop("_level"); r.pop("_labels")
+        r.pop("_level"); r.pop("_labels"); r.pop("_last_daily")
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
     OUT_JSON.write_text(json.dumps({
         "computed_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),

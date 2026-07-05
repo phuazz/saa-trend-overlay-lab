@@ -25,9 +25,10 @@ and the plain diversified base.
 
 ## Universe (9 SAA building blocks)
 
-US equity (SPY), Dev ex-US (VEA), EM (VWO), Long Treasuries (TLT), Interm
+US equity (SPY), Dev ex-US (EFA), EM (EEM), Long Treasuries (TLT), Interm
 Treasuries (IEF), REITs (VNQ), Broad commodity (DBC), Gold (GLD), Cash/3m-bill
-(BIL). Each is a pre-ETF proxy chained on returns to the ETF. See the
+(BIL). Each is a pre-ETF proxy chained on returns to the ETF, except the two
+international blocks, held as EFA/EEM outright (amendment A1). See the
 reconciliation table in `PRE_REGISTRATION.md`.
 
 ## Data

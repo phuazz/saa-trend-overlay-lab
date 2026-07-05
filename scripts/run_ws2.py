@@ -159,6 +159,71 @@ def clustered_exit(levels, cash_ret, common, W_equal, threshold=0.60):
     }, frac_out, cluster
 
 
+def sma_robustness(levels, cash_ret, windows=(8, 10, 12), cost_bps=None) -> dict:
+    """The pre-registered '12-month as robustness' check, finally run: the
+    equal-weight D/E-vs-C decision at each SMA window. Shows whether the E 'pass'
+    at the deployed 10-month window survives the promised alternate filter."""
+    cost_bps = E.DEFAULT_COST_BPS if cost_bps is None else cost_bps
+    rets = E.monthly_returns(levels[E.RISK_BLOCKS])
+    base = E.base_weights_equal(levels)
+    out = {}
+    for w in windows:
+        W = {v: E.build_variant(levels, base, v, window=w) for v in VARIANTS}
+        common = W["B"].index
+        for v in ("C", "D", "E"):
+            common = common.intersection(W[v].index)
+        m = {v: E.metrics(E.assemble(W[v].loc[common], rets, cash_ret, cost_bps).net,
+                          cash_ret)["sharpe"] for v in VARIANTS}
+        out[str(w)] = {"C": round(m["C"], 3),
+                       "D_minus_C": round(m["D"] - m["C"], 3),
+                       "E_minus_C": round(m["E"] - m["C"], 3),
+                       "E_passes_0.10_bar": bool((m["E"] - m["C"]) >= 0.10)}
+    return out
+
+
+def bootstrap_diff(levels, cash_ret, seed=42, n_boot=10000, block=12, cost_bps=None) -> dict:
+    """Circular block-bootstrap CI on the E-minus-C and C-minus-B Sharpe
+    differences (equal-weight, deployed 10-month window). The honest measure of
+    whether the frozen +0.10 bar is distinguishable from noise on this sample."""
+    cost_bps = E.DEFAULT_COST_BPS if cost_bps is None else cost_bps
+    rets = E.monthly_returns(levels[E.RISK_BLOCKS])
+    base = E.base_weights_equal(levels)
+    W = {v: E.build_variant(levels, base, v) for v in VARIANTS}
+    common = W["B"].index
+    for v in ("C", "D", "E"):
+        common = common.intersection(W[v].index)
+    net = {v: E.assemble(W[v].loc[common], rets, cash_ret, cost_bps).net.reindex(common) for v in VARIANTS}
+    cash = cash_ret.reindex(common)
+    ex = {v: (net[v] - cash).dropna().to_numpy() for v in VARIANTS}
+    n = min(len(a) for a in ex.values())
+    ex = {v: a[-n:] for v, a in ex.items()}
+    ann = np.sqrt(E.MONTHS_PER_YEAR)
+
+    def sharpe(a):
+        return a.mean() / a.std(ddof=1) * ann
+
+    rng = np.random.default_rng(seed)
+    nb = int(np.ceil(n / block))
+    pairs = {"E_minus_C": ("E", "C"), "C_minus_B": ("C", "B")}
+    res = {}
+    for name, (hi, lo) in pairs.items():
+        obs = float(sharpe(ex[hi]) - sharpe(ex[lo]))
+        draws = np.empty(n_boot)
+        for i in range(n_boot):
+            starts = rng.integers(0, n, nb)
+            sel = np.concatenate([[(s + k) % n for k in range(block)] for s in starts])[:n]
+            draws[i] = sharpe(ex[hi][sel]) - sharpe(ex[lo][sel])
+        res[name] = {
+            "observed": round(obs, 3),
+            "ci95": [round(float(np.percentile(draws, 2.5)), 3), round(float(np.percentile(draws, 97.5)), 3)],
+            "p_ge_0.10": round(float(np.mean(draws >= 0.10)), 3),
+            "p_le_0": round(float(np.mean(draws <= 0.0)), 3),
+        }
+    res["n_months"] = int(n)
+    res["block"] = block
+    return res
+
+
 def matched_window_check(levels, cash_ret) -> dict:
     """Isolate weighting from window: equal-weight vs inverse-vol B/C/D/E on the
     SAME (inverse-vol) window at 10 bps. Confirms C's lift under inverse-vol is
@@ -240,6 +305,8 @@ def main() -> int:
                      "narrowed_trend_strong": nar_dec},
         "clustered_exit": cx,
         "weighting_vs_window_matched": matched_window_check(levels, cash_ret),
+        "sma_robustness": sma_robustness(levels, cash_ret),
+        "bootstrap_sharpe_diff": bootstrap_diff(levels, cash_ret),
         "narrowing_note": "pre-specified set (equities, long Treasuries, commodities); "
                           "run for completeness — per-asset did NOT disappoint, so not a rescue",
     }
@@ -265,6 +332,19 @@ def main() -> int:
         print(f"{v:<4}{e['sharpe']:>11.3f}{e['max_dd']*100:>9.1f}%   {i['sharpe']:>11.3f}{i['max_dd']*100:>9.1f}%")
     print("  reading: equal-weight D/E clearly beat C; inverse-vol lifts C ~+0.20 and the")
     print("  per-asset edge vanishes → per-asset is a substitute for risk-balanced weighting.")
+
+    sr = results["sma_robustness"]; bs = results["bootstrap_sharpe_diff"]
+    print(f"\n{'='*78}\nPRE-REGISTERED SMA ROBUSTNESS (equal-weight, 10 bps) — E/D vs C by filter\n{'='*78}")
+    for w, x in sr.items():
+        print(f"  SMA{w}: C {x['C']:.3f}  E-C {x['E_minus_C']:+.3f}  D-C {x['D_minus_C']:+.3f}  "
+              f"[{'PASS' if x['E_passes_0.10_bar'] else 'fail'}]")
+    print(f"\nBLOCK-BOOTSTRAP on the Sharpe difference ({bs['n_months']} months, block {bs['block']}):")
+    for k in ("E_minus_C", "C_minus_B"):
+        b = bs[k]
+        print(f"  {k}: obs {b['observed']:+.3f}  95% CI [{b['ci95'][0]:+.3f}, {b['ci95'][1]:+.3f}]  "
+              f"P(>=+0.10)={b['p_ge_0.10']:.2f}  P(<=0)={b['p_le_0']:.2f}")
+    print("  reading: the +0.10 bar sits inside one standard error — the E 'pass' is a")
+    print("  coin flip; C is kept on parsimony under statistical indistinguishability.")
 
     print(f"\nwrote {OUT_CSV.relative_to(ROOT)}")
     print(f"wrote {OUT_JSON.relative_to(ROOT)}")

@@ -13,7 +13,7 @@ allocation (SAA). Two goals:
    does to SAA building blocks well before the ETF era, not just post-2008.
 2. **Per-asset vs single-overlay** — test whether applying the overlay to each
    building block individually (D/E) beats one overlay on the balanced base
-   (C, the operational-ease choice selected by the operating desk) and the plain diversified
+   (C, the operational-ease choice Jirong selected) and the plain diversified
    base (B).
 
 ## 2. Provenance (what this builds on; not a repeat)
@@ -148,3 +148,43 @@ starts are unchanged (EFA 2001-09, EEM 2003-05) — the full nine-block base sti
 begins 2003-05. Definitional note carried into the record: EFA = MSCI EAFE (dev
 ex-US, **ex-Canada**); EEM = MSCI EM — versus the FTSE families the removed funds
 tracked (VEA includes Canada + Korea; VWO excludes Korea). Panel rebuilt under A1.
+
+## 9. Post-hoc robustness review and verdict re-labelling (2026-07-05)
+
+Three independent adversarial reviews (Quant PM, CIO, CPM), each verified by
+recomputation, stress-tested the WS2 verdict. They agree the engineering is sound
+and KEEP-C is the right call, but that the filed REASONING was overclaimed. The
+record is re-labelled:
+
+- **The decisive gaps are statistically indistinguishable from zero.** Circular
+  block bootstrap (10-month, equal-weight, 10 bps, 10k draws): E−C observed +0.107,
+  95% CI [−0.13, +0.36], P(clear +0.10) = 0.51, P(≤0) = 0.20; C−B similar. The
+  +0.10 bar is ≈ one standard error on 22y of monthly data. KEEP C is a **parsimony
+  default under statistical indistinguishability**, not a measured win.
+- **Frozen-rule override disclosed.** Under §6, E's equal-weight result PASSES
+  (+0.106 at 10 bps, drawdown better; `ws2_results.json` records
+  `PASSES_RULE=true`). It is set aside on the indistinguishability + robustness
+  grounds above. The earlier framing ("the rule kept C") is corrected.
+- **The promised SMA-12 robustness was run** (§6 carried it, unrun): E−C = +0.055
+  (SMA-8) / +0.106 (SMA-10) / +0.049 (SMA-12). The deployed 10-month pass is a
+  1-of-3-window spike — reinforces KEEP C, exposes the earlier compliance gap.
+- **The inverse-vol "lever" is demoted** from conclusion to follow-up hypothesis:
+  single 36-month vol window, period-concentrated (2008–14 bond bull), lift
+  significant only at p≈0.035 pre-multiplicity. A vol-window/ERC sweep + bootstrap
+  is required before it informs any weighting decision.
+- **WS1 softened:** the robust finding is drawdown/Ulcer truncation on nearly every
+  sleeve (pre-ETF included); the Sharpe "skill" is small, sleeve-dependent and not
+  significant (aligned-window US-equity proxy skill is negative). The headline no
+  longer reads asset-era beta as overlay skill.
+- **Benchmark added:** a passive 60/40 (SPY/IEF) matches the overlays on Sharpe and
+  beats them on CAGR; the proposition is a priced insurance trade (~1–2.4%/yr for a
+  ~two-thirds-shallower drawdown), stated as such.
+- **CIO deployment view:** SHELVE for a fund book (no Sharpe case vs 60/40);
+  tightly-gated PILOT for the personal context only, conditional on the vol-window
+  sweep and the bootstrap passing first.
+- **Corrections applied:** partial-month date truncation (metrics stop at the last
+  completed month); the public dashboard shows the overlay strategy curve +
+  drawdowns only (no rebased vendor level curve); uniform-vs-per-class cost noted.
+
+Bootstrap and SMA sweeps are filed in `results/ws2_results.json`
+(`bootstrap_sharpe_diff`, `sma_robustness`).

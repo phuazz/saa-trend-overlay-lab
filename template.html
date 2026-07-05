@@ -1,9 +1,10 @@
 <!-- SAA Trend-Overlay Lab — educational dashboard. Style per C:\dev\design.md.
-     Norgate personal-use licence: DERIVED overlay outputs only (strategy curve
-     shapes, drawdowns, overlay states, metrics) — no vendor series values. -->
+     Norgate personal-use licence: DERIVED overlay outputs only (growth-of-1
+     curve shapes, drawdowns, overlay states, metrics) — no vendor series values. -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SAA Trend-Overlay Lab</title>
+<meta name="description" content="Faber 10-month trend overlay on a nine-block strategic asset allocation over long history — educational research. Verdict: keep the single overlay; the robust lever is inverse-vol weighting.">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
@@ -17,7 +18,6 @@
   --a:#b45309; --a-bg:rgba(180,83,9,0.07);
   --p:#7c3aed; --p-bg:rgba(124,58,237,0.06);
   --c:#0891b2; --c-bg:rgba(8,145,178,0.06);
-  --pk:#be185d; --pk-bg:rgba(190,24,93,0.06);
   --serif:'Instrument Serif',Georgia,serif; --sans:'DM Sans',-apple-system,sans-serif;
   --mono:'JetBrains Mono','SF Mono','Menlo',monospace;
   --shadow-sm:0 1px 2px rgba(0,0,0,0.04); --shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
@@ -26,53 +26,83 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--t1);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
-.shell{max-width:1180px;margin:0 auto;padding:20px 32px 72px}
+.shell{max-width:1180px;margin:0 auto;padding:18px 32px 72px}
 .mono{font-family:var(--mono)}
 h1,h2,h3{font-weight:400}
 a{color:var(--b);text-decoration:none}
+a:hover{text-decoration:underline}
 
-.masthead{padding:28px 0 20px;border-bottom:2px solid var(--t1);display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px}
-.masthead h1{font-family:var(--serif);font-size:34px;letter-spacing:-0.5px;line-height:1.05}
+/* masthead */
+.topnav{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--t3);padding:6px 0}
+.topnav a{color:var(--t3)}
+.masthead{padding:16px 0 18px;border-bottom:2px solid var(--t1);display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px}
+.masthead h1{font-family:var(--serif);font-size:36px;letter-spacing:-0.5px;line-height:1.02}
 .masthead h1 em{font-style:italic;color:var(--t3)}
-.masthead .sub{color:var(--t2);font-size:13px;margin-top:6px;max-width:640px}
-.pills{display:flex;gap:8px;flex-wrap:wrap}
-.pill{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;letter-spacing:0.3px}
+.masthead .sub{color:var(--t2);font-size:13.5px;margin-top:7px;max-width:660px}
+.pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.pill{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;letter-spacing:0.3px;white-space:nowrap}
 .pill-verdict{background:var(--b-bg2);color:var(--b);border:1px solid rgba(37,99,235,0.25)}
 .pill-date{background:var(--bg3);color:var(--t3);border:1px solid var(--bd)}
 .pill-edu{background:var(--a-bg);color:var(--a);border:1px solid rgba(180,83,9,0.22)}
 
-.banner{margin:16px 0 4px;padding:10px 14px;background:var(--a-bg);border:1px solid rgba(180,83,9,0.18);border-radius:var(--radius);color:var(--a);font-size:12.5px}
+/* tabs */
+.tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--bd);margin:18px 0 0;-webkit-overflow-scrolling:touch}
+.tab{position:relative;background:none;border:none;padding:11px 15px;font-family:var(--sans);font-size:13px;font-weight:500;color:var(--t3);cursor:pointer;white-space:nowrap;min-height:44px}
+.tab:hover{color:var(--t1)}
+.tab.active{color:var(--t1);font-weight:600}
+.tab.active::after{content:'';position:absolute;bottom:-1px;left:8px;right:8px;height:2px;background:var(--t1)}
+.tab-panel{display:none;animation:fade .3s ease}
+.tab-panel.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
-.kpi-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--bd);border:1px solid var(--bd);border-radius:var(--radius-lg);overflow:hidden;margin:22px 0}
+/* banner / verdict */
+.banner{margin:16px 0 0;padding:10px 14px;background:var(--a-bg);border:1px solid rgba(180,83,9,0.18);border-radius:var(--radius);color:var(--a);font-size:12.5px}
+.disclosure{margin:14px 0 0;padding:9px 14px;background:var(--bg3);border:1px solid var(--bd);border-radius:var(--radius);color:var(--t2);font-size:11.5px;line-height:1.5}
+.boot{display:flex;flex-direction:column;justify-content:center;gap:6px;padding:6px 0}
+.boot .ci{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--t1)}
+.boot .lab{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:0.6px;font-weight:700}
+.boot .p{font-family:var(--mono);font-size:13px;color:var(--t2)}
+.verdict-hero{background:var(--bg2);border:1px solid var(--bd);border-left:4px solid var(--b);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:22px 24px;margin:18px 0}
+.verdict-hero .k{font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:700;color:var(--b)}
+.verdict-hero h2{font-family:var(--serif);font-size:27px;margin:6px 0 8px;letter-spacing:-0.3px}
+.verdict-hero p{color:var(--t2);font-size:14px;max-width:820px}
+.takeaways{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:16px 0}
+.ta{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--radius-lg);padding:16px 18px;box-shadow:var(--shadow-sm)}
+.ta .n{font-family:var(--mono);font-size:11px;color:var(--t4);font-weight:600}
+.ta h3{font-size:14.5px;font-weight:600;margin:4px 0 6px}
+.ta p{font-size:12.5px;color:var(--t2)}
+
+/* kpi */
+.kpi-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--bd);border:1px solid var(--bd);border-radius:var(--radius-lg);overflow:hidden;margin:18px 0}
 .kpi{background:var(--bg2);padding:14px 16px}
 .kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;color:var(--t3)}
-.kpi-val{font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:-0.5px;margin-top:4px}
-.kpi-val small{font-size:12px;font-weight:500;color:var(--t3)}
+.kpi-val{font-family:var(--mono);font-size:21px;font-weight:700;letter-spacing:-0.5px;margin-top:4px}
 .kpi-val.pos{color:var(--g)} .kpi-val.neg{color:var(--r)} .kpi-val.blue{color:var(--b)}
 .kpi-sub{font-size:11px;color:var(--t3);margin-top:2px}
 
-section{margin:40px 0}
+section{margin:30px 0}
 .sec-head{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--bd);padding-bottom:8px;margin-bottom:6px}
 .sec-num{font-family:var(--mono);font-size:12px;color:var(--t4);font-weight:600}
-.sec-head h2{font-family:var(--serif);font-size:25px;letter-spacing:-0.3px}
-.lede{color:var(--t2);font-size:14px;max-width:720px;margin:12px 0 18px}
-.lede strong{color:var(--t1);font-weight:600}
+.sec-head h2{font-family:var(--serif);font-size:24px;letter-spacing:-0.3px}
+.section-sub{color:var(--t2);font-size:14px;max-width:820px;margin:10px 0 16px}
+.section-sub strong{color:var(--t1);font-weight:600}
 
 .card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:18px 20px;margin:16px 0}
 .card-title{font-size:11px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;color:var(--t2);margin-bottom:12px}
 .chart{width:100%;height:340px}
 .chart.tall{height:400px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:860px){.grid2{grid-template-columns:1fr}.kpi-strip{grid-template-columns:repeat(2,1fr)}.shell{padding:16px}}
+@media(max-width:860px){.grid2,.takeaways{grid-template-columns:1fr}.kpi-strip{grid-template-columns:repeat(2,1fr)}.shell{padding:14px}.masthead h1{font-size:28px}}
 
 table{width:100%;border-collapse:collapse;font-size:12.5px}
-th{background:var(--bg3);text-transform:uppercase;font-size:10px;letter-spacing:0.6px;color:var(--t2);font-weight:700;text-align:right;padding:8px 10px;border-bottom:2px solid var(--bd2);position:sticky;top:0}
+th{background:var(--bg3);text-transform:uppercase;font-size:10px;letter-spacing:0.6px;color:var(--t2);font-weight:700;text-align:right;padding:8px 10px;border-bottom:2px solid var(--bd2)}
 th:first-child{text-align:left}
 td{padding:7px 10px;border-bottom:1px solid var(--bd);text-align:right;font-family:var(--mono)}
 td:first-child{text-align:left;font-family:var(--sans)}
 tr:hover td{background:var(--bg-hover)}
 .pos{color:var(--g)} .neg{color:var(--r)}
 .row-keep{background:var(--b-bg)} .row-keep td:first-child{font-weight:600;color:var(--b)}
+.row-bench td{color:var(--t3);font-style:italic}
 .tag{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;margin-left:6px}
 .tag-pass{background:var(--g-bg2);color:var(--g)} .tag-fail{background:var(--bg4);color:var(--t3)}
 
@@ -80,49 +110,84 @@ tr:hover td{background:var(--bg-hover)}
 .callout h3{font-family:var(--serif);font-size:19px;margin-bottom:6px}
 .callout p{font-size:13.5px;color:var(--t2)}
 .note{font-size:12px;color:var(--t3);margin-top:8px}
-ul.caveats{list-style:none;font-size:12.5px;color:var(--t2)}
-ul.caveats li{padding:5px 0 5px 18px;position:relative}
+ul.caveats{list-style:none;font-size:13px;color:var(--t2)}
+ul.caveats li{padding:6px 0 6px 20px;position:relative}
 ul.caveats li::before{content:'—';position:absolute;left:0;color:var(--t4)}
-footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--bd);font-size:11.5px;color:var(--t3);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+ul.caveats li strong{color:var(--t1);font-weight:600}
+details.acc{background:var(--a-bg);border:1px solid rgba(180,83,9,0.2);border-radius:var(--radius);padding:0 16px;margin:16px 0}
+details.acc summary{cursor:pointer;font-weight:600;color:var(--a);padding:13px 0;font-size:13.5px;list-style:none}
+details.acc summary::-webkit-details-marker{display:none}
+details.acc summary::before{content:'▸ ';font-size:11px}
+details.acc[open] summary::before{content:'▾ '}
+details.acc[open] summary{border-bottom:1px solid rgba(180,83,9,0.15)}
+details.acc .acc-body{padding:12px 0 14px}
+footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--bd);font-size:11.5px;color:var(--t3);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
 .loading{padding:60px;text-align:center;color:var(--t3);font-size:13px}
 </style>
 
 <div class="shell">
+  <div class="topnav">
+    <a href="https://phuazz.github.io/dashboards.html">← All dashboards</a>
+    <span>Zhenghao Phua, CFA</span>
+  </div>
   <div class="masthead">
     <div class="masthead-left">
       <h1>SAA Trend-Overlay Lab <em>— Faber, over long history</em></h1>
-      <div class="sub">Does a 10-month trend overlay help a nine-block strategic allocation? And is a <em>per-asset</em> overlay worth the complexity over one overlay on the balanced book?</div>
+      <div class="sub">Does a 10-month trend overlay help a nine-block strategic asset allocation? And is a <em>per-asset</em> overlay worth the complexity over one overlay on the balanced book?</div>
     </div>
     <div class="pills">
-      <span class="pill pill-verdict" id="pill-verdict">VERDICT · KEEP SINGLE OVERLAY</span>
+      <span class="pill pill-verdict">VERDICT · KEEP SINGLE OVERLAY</span>
       <span class="pill pill-date" id="pill-date">—</span>
       <span class="pill pill-edu">EDUCATIONAL · NOT ADVICE</span>
     </div>
   </div>
 
-  <div class="banner">Educational research on a personal book. Derived overlay outputs only — no data-vendor series values are shown. Metrics are net of one-way costs (headline 10&nbsp;bps); the per-asset comparison spans 2004–2026.</div>
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-tab="verdict">Verdict</button>
+    <button class="tab" data-tab="concept">The concept</button>
+    <button class="tab" data-tab="question">Per-asset vs single</button>
+    <button class="tab" data-tab="lever">Weighting is the lever</button>
+    <button class="tab" data-tab="robust">Robustness &amp; caveats</button>
+    <button class="tab" data-tab="method">Method</button>
+  </nav>
 
-  <div class="kpi-strip" id="kpis"></div>
-
-  <!-- 1 CONCEPT -->
-  <section>
-    <div class="sec-head"><span class="sec-num">01</span><h2>The concept, over long history</h2></div>
-    <div class="lede">A Faber overlay holds each asset only while it is above its 10-month moving average, and sits in T-bills otherwise. Applied to US equity back to 1989 it <strong>gives up a little compounding but roughly halves the worst drawdown</strong>. The mechanism is not a post-2008 artefact — it is visible in the pre-ETF <em>proxy</em> era on every sleeve that reaches back far enough.</div>
+  <!-- ============ VERDICT ============ -->
+  <div class="tab-panel active" id="tab-verdict">
+    <div class="verdict-hero">
+      <div class="k">The verdict</div>
+      <h2>Keep the single overlay — because the variants are statistically tied, not because per-asset lost.</h2>
+      <p>Across 2004–2026 the plain base, the single overlay and the per-asset overlays are separated by less than one standard error — the per-asset-minus-single Sharpe gap has a bootstrap 95% interval of <strong>−0.13 to +0.36</strong>, a coin flip. When you cannot tell them apart, the simplest wins: one 10-month signal on the balanced book (1 signal versus 8, and far less turnover). And the overlay's durable contribution is <em>drawdown</em>, not return — a passive 60/40 matches it on Sharpe and beats it on compounding, so the ~1–2.4%/yr the overlay gives up is the price of a much shallower drawdown.</p>
+    </div>
+    <div class="disclosure">All figures are <strong>simulated backtests</strong> net of assumed costs — no live or paper track record exists. Personal educational research in a personal capacity; not investment advice, and not connected to any firm's products or services.</div>
+    <div class="kpi-strip" id="kpis"></div>
     <div class="card">
-      <div class="card-title">Variant A — US equity: 10-month overlay vs buy &amp; hold (growth of 1, log)</div>
+      <div class="card-title">Risk vs reward — every variant at 10 bps (up-and-left is better)</div>
+      <div id="chartScatter" class="chart tall"></div>
+      <div class="note">Sharpe (higher = better) against maximum drawdown (further left = shallower). The overlays trade a little Sharpe/return for a much shallower drawdown than the plain base or 60/40; <strong>C on an inverse-vol base</strong> sits closest to the sweet spot.</div>
+    </div>
+    <div class="takeaways" id="takeaways"></div>
+  </div>
+
+  <!-- ============ CONCEPT ============ -->
+  <div class="tab-panel" id="tab-concept">
+    <div class="sec-head"><span class="sec-num">01</span><h2>The concept, over long history</h2></div>
+    <p class="section-sub">A Faber overlay holds each asset only while it is above its 10-month moving average, and sits in T-bills otherwise. Applied to US equity back to 1989 it <strong>gives up ~1.4%/yr of compounding but roughly halves the worst drawdown</strong>. The robust part is the drawdown: gating cuts the worst drawdown on <em>nearly</em> every sleeve, pre-ETF as well as post. The risk-adjusted-<em>return</em> edge, by contrast, is small and not statistically significant, and gold's 1983–2000 bear is a clear exception (see the table).</p>
+    <div class="card">
+      <div class="card-title">Variant A — US equity: overlay strategy curve (top) and drawdown vs buy &amp; hold (bottom)</div>
       <div id="chartA" class="chart tall"></div>
+      <div class="note">The overlay compounds a little slower than buy &amp; hold (see the metrics) but its drawdown, shaded below, is roughly half as deep. Buy &amp; hold is shown as a derived drawdown only.</div>
     </div>
     <div class="card">
       <div class="card-title">Per-sleeve — overlay vs buy &amp; hold over each block's full history (net 10 bps)</div>
       <div style="overflow-x:auto"><table id="sleeveTable"></table></div>
-      <div class="note">The <em>proxy-era Sharpe</em> column is the overlay's risk-adjusted return <strong>before the ETF existed</strong> — the concept predates the modern era. Drawdown and Ulcer are cut on every sleeve; Sharpe improves most where trend is structurally strong (commodity, dev-ex-US, gold) and least in rates.</div>
+      <div class="note">The <em>proxy-era Sharpe</em> is the overlay's risk-adjusted return before the ETF existed — but it partly reflects the <em>asset's</em> era rather than overlay skill (buy-and-hold Sharpe was similar), and none of the in-vs-out timing spreads are statistically significant. What <strong>is</strong> robust across every sleeve and both eras is the drawdown and Ulcer reduction. Gold's proxy era is negative; US equity's overlay skill is negative pre-1993.</div>
     </div>
-  </section>
+  </div>
 
-  <!-- 2 QUESTION -->
-  <section>
-    <div class="sec-head"><span class="sec-num">02</span><h2>The question — per-asset vs a single overlay</h2></div>
-    <div class="lede"><strong>B</strong> is the plain equal-weight base. <strong>C</strong> puts one overlay on the whole balanced book (the operationally simple choice). <strong>D</strong> and <strong>E</strong> overlay every block individually (binary / graduated). On equal weights the per-asset variants look better — lower drawdown, higher Sharpe — but read the next section before concluding.</div>
+  <!-- ============ QUESTION ============ -->
+  <div class="tab-panel" id="tab-question">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Per-asset vs a single overlay</h2></div>
+    <p class="section-sub"><strong>B</strong> is the plain equal-weight base. <strong>C</strong> puts one overlay on the whole balanced book (the operationally simple choice). <strong>D</strong> and <strong>E</strong> overlay every block individually (binary / graduated). A passive <strong>60/40</strong> is shown as the do-nothing-clever benchmark. On equal weights the per-asset variants look better on drawdown — but read the next tab before concluding they are worth it.</p>
     <div class="grid2">
       <div class="card"><div class="card-title">Growth of 1 (net 10 bps)</div><div id="chartBCDE" class="chart"></div></div>
       <div class="card"><div class="card-title">Drawdown</div><div id="chartDD" class="chart"></div></div>
@@ -132,81 +197,109 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--bd);font-size
       <div style="overflow-x:auto"><table id="eqTable"></table></div>
       <div class="note" id="decisionNote"></div>
     </div>
-  </section>
+  </div>
 
-  <!-- 3 FINDING -->
-  <section>
-    <div class="sec-head"><span class="sec-num">03</span><h2>The finding — weighting is the lever, not granularity</h2></div>
-    <div class="lede">Give the base <strong>inverse-volatility</strong> weights (risk-parity-lite) and the single overlay <strong>C catches up entirely</strong>: on a matched 2007–2026 window, risk-balancing lifts C by about +0.20 Sharpe — a pure weighting effect — and the per-asset advantage vanishes. Per-asset overlays were largely a <em>substitute</em> for risk-balanced weighting.</div>
+  <!-- ============ LEVER ============ -->
+  <div class="tab-panel" id="tab-lever">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Weighting is the lever, not granularity</h2></div>
+    <p class="section-sub">Give the base <strong>inverse-volatility</strong> weights and the single overlay C rises to meet the per-asset variants on the matched 2007–2026 window — evidence that per-asset overlays are largely a <em>substitute</em> for risk-balanced weighting. Treat this as a <strong>promising lead, not a conclusion</strong>: it is a single vol-window (36-month) result, concentrated in the 2008–14 bond bull, significant only at p≈0.035 before any multiple-testing haircut. It is the hypothesis for the next study, not an instruction to rewire weights.</p>
     <div class="grid2">
       <div class="card"><div class="card-title">Sharpe by variant — equal-weight vs inverse-vol (matched window, 10 bps)</div><div id="chartBars" class="chart"></div></div>
       <div class="card"><div class="card-title">Single overlay C — equal-weight vs inverse-vol base (growth of 1)</div><div id="chartCiv" class="chart"></div></div>
     </div>
     <div class="callout">
-      <h3 id="calloutHead">Keep the single overlay (C) — and weight the base by inverse-vol</h3>
+      <h3 id="calloutHead">Keep the single overlay — inverse-vol weighting is the lead to test next</h3>
       <p id="calloutBody"></p>
     </div>
     <div class="card">
       <div class="card-title">Metrics — inverse-vol base, 2007–2026, net 10 bps</div>
       <div style="overflow-x:auto"><table id="ivTable"></table></div>
     </div>
-  </section>
+  </div>
 
-  <!-- 4 CLUSTERED EXIT -->
-  <section>
-    <div class="sec-head"><span class="sec-num">04</span><h2>When everything exits at once</h2></div>
-    <div class="lede">A diagnostic on the per-asset overlay: how often does a large share of the book go to cash together? <span id="clusterLede"></span></div>
+  <!-- ============ ROBUSTNESS ============ -->
+  <div class="tab-panel" id="tab-robust">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Robustness &amp; caveats</h2></div>
+    <p class="section-sub">The verdict is deliberately stress-tested against cost, weighting, universe breadth, filter length and clustered de-risking — and the honest limitations are listed upfront, not buried.</p>
     <div class="card">
-      <div class="card-title">Share of the 8 blocks out-of-market (derived overlay state)</div>
-      <div id="chartCluster" class="chart"></div>
-      <div class="note" id="clusterNote"></div>
+      <div class="card-title">Is the per-asset edge distinguishable from noise?</div>
+      <div class="grid2">
+        <div class="boot" id="bootBox"></div>
+        <div style="overflow-x:auto"><table id="smaTable"></table></div>
+      </div>
+      <div class="note" id="bootNote"></div>
     </div>
-  </section>
+    <details class="acc" open>
+      <summary>Known limitations, acknowledged upfront</summary>
+      <div class="acc-body"><ul class="caveats" id="caveatList"></ul></div>
+    </details>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">Cost sensitivity — E-minus-C Sharpe across the cost sweep</div>
+        <div id="chartCost" class="chart"></div>
+        <div class="note" id="costNote"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Clustered exits — share of the 8 blocks out-of-market</div>
+        <div id="chartCluster" class="chart"></div>
+        <div class="note" id="clusterNote"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">The frozen decision rule and how each variant scored</div>
+      <div style="overflow-x:auto"><table id="ruleTable"></table></div>
+      <div class="note"><strong>Disclosure:</strong> rule (frozen before results) — prefer per-asset only if net Sharpe ≥ C + 0.10, drawdown no worse than C by 2 ppt, surviving 10 bps. Under it, E's equal-weight result technically <strong>passes</strong> (+0.106 at 10 bps, drawdown better). It is set aside here because the margin is inside one standard error (above), it fails at the 12-month filter and at 20 bps, and it does not survive the inverse-vol base — so the verdict is a parsimony default under statistical indistinguishability, not "the rule chose C". A tied result was pre-declared a valid outcome.</div>
+    </div>
+  </div>
 
-  <!-- 5 METHOD -->
-  <section>
-    <div class="sec-head"><span class="sec-num">05</span><h2>Method &amp; caveats</h2></div>
+  <!-- ============ METHOD ============ -->
+  <div class="tab-panel" id="tab-method">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Method</h2></div>
     <div class="grid2">
       <div class="card">
         <div class="card-title">How it is built</div>
         <ul class="caveats">
-          <li>Nine SAA blocks as spliced monthly total-return series: index / spot proxies, ETF bridges, and reconciled synthetic constant-maturity Treasury &amp; T-bill series; deep sleeves reach 1962–1996.</li>
-          <li>Signal decided at each month-end, position lagged one month (no look-ahead); out-of-market capital earns the spliced T-bill leg, not 0%.</li>
-          <li>10-month SMA base (12-month as robustness); equal-weight 12.5% base, inverse-vol as the robustness cut.</li>
-          <li>One-way costs swept 0/5/10/20 bps; decision referenced at 10 bps.</li>
+          <li><strong>Nine SAA blocks</strong> as spliced monthly total-return series: index / spot proxies, ETF bridges, and reconciled synthetic constant-maturity Treasury &amp; T-bill series; deep sleeves reach 1962–1996.</li>
+          <li><strong>No look-ahead:</strong> signal decided at each month-end, position lagged one month; out-of-market capital earns the spliced T-bill leg, not 0%.</li>
+          <li><strong>Filter:</strong> 10-month SMA base; the 12-month robustness was run (it does not sustain the per-asset pass — see Robustness). Graduated variant E scales across a ±5% band. Equal-weight 12.5% base; inverse-vol as the robustness cut.</li>
+          <li><strong>Costs:</strong> one-way, applied uniformly and swept 0/5/10/20 bps (decision at 10 bps); a per-class schedule was specified but not yet implemented. The 60/40 benchmark is shown gross. Turnover and whipsaw reported.</li>
+          <li><strong>Window:</strong> deep sleeves run from their own starts (1962–1996); the nine-block comparison runs 2004-04 → 2026-06 (10-month warm-up + one-month lag from the 2003-05 EEM inception), stopping at the last completed month.</li>
+          <li><strong>Tested:</strong> 14 unit tests including no-look-ahead in the assembly, cost accounting, and month/year boundaries.</li>
         </ul>
       </div>
       <div class="card">
-        <div class="card-title">What to keep in mind</div>
-        <ul class="caveats" id="caveatList"></ul>
+        <div class="card-title">Splice reconciliation (each proxy validated against its ETF)</div>
+        <div style="overflow-x:auto"><table id="methodTable"></table></div>
+        <div class="note">Every pre-ETF proxy is chained on <em>returns</em> and validated over the overlap window (β≈1, α≈0, high correlation). Synthetic Treasury series reconcile clean (corr 0.99). Derived outputs only — no vendor series values are shown (Norgate personal-use licence).</div>
       </div>
     </div>
-  </section>
+  </div>
 
   <div id="loading" class="loading">Loading derived series…</div>
 
   <footer>
-    <span>SAA Trend-Overlay Lab · educational research, not investment advice</span>
+    <span>SAA Trend-Overlay Lab · educational research, not investment advice · <a href="https://github.com/phuazz/saa-trend-overlay-lab">source</a></span>
     <span class="mono" id="genstamp">—</span>
   </footer>
 </div>
 
 <script>
 const INJECTED_DATA = null; /*__DATA__*/
-const COL={B:'#8a8a82',C:'#2563eb',D:'#b45309',E:'#7c3aed',g:'#1a8754',r:'#c0392b',t3:'#8a8a82',grid:'#f0f0ea'};
+const COL={B:'#8a8a82',C:'#2563eb',D:'#b45309',E:'#7c3aed',bench:'#111111',ivol:'#0891b2',g:'#1a8754',r:'#c0392b',t3:'#8a8a82'};
 const LBL={B:'B · plain base',C:'C · single overlay',D:'D · per-asset binary',E:'E · per-asset graduated'};
 
 const BASE_LAYOUT={
   paper_bgcolor:'transparent',plot_bgcolor:'transparent',
   font:{family:'DM Sans',size:10,color:'#5c5c56'},
-  margin:{t:14,b:24,l:12,r:52},
+  margin:{t:14,b:26,l:12,r:52},
   xaxis:{gridcolor:'#eeeee8',linecolor:'#d5d3ca',linewidth:1,showgrid:false,tickformat:"%b '%y",dtick:'M24',tickfont:{size:9}},
   yaxis:{gridcolor:'#f0f0ea',linecolor:'#d5d3ca',linewidth:1,showgrid:true,side:'right',tickfont:{size:9,family:'JetBrains Mono'}},
-  showlegend:true,legend:{x:0,y:1.04,orientation:'h',font:{size:9},bgcolor:'transparent'},
+  showlegend:true,legend:{x:0,y:1.05,orientation:'h',font:{size:9},bgcolor:'transparent'},
   hovermode:'x unified',hoverlabel:{bgcolor:'#fff',bordercolor:'#d5d3ca',font:{size:10,family:'DM Sans'}}
 };
 const CFG={displayModeBar:false,responsive:true};
 const L=(o)=>Object.assign(JSON.parse(JSON.stringify(BASE_LAYOUT)),o||{});
+const logY=()=>({type:'log',side:'right',tickfont:{size:9,family:'JetBrains Mono'},gridcolor:'#f0f0ea',linecolor:'#d5d3ca'});
 const pct=(x,d=1)=>(x*100).toFixed(d)+'%';
 const sg=(x,d=2)=>(x>=0?'+':'')+x.toFixed(d);
 
@@ -215,28 +308,60 @@ async function load(){
   const r=await fetch('data/dashboard.json'); if(!r.ok) throw new Error('data fetch failed'); return r.json();
 }
 
+/* ---- Verdict ---- */
 function kpis(d){
-  const A=d.concept.variant_A.metrics, q=d.question.metrics, f=d.finding.metrics_ivol;
+  const A=d.concept.variant_A.metrics, q=d.question.metrics, f=d.finding.metrics_ivol, bm=d.question.benchmark.metrics;
   const cells=[
-    ['US equity max drawdown', `${(A.buy_hold.max_dd*100).toFixed(0)}%→<span class="neg">${(A.overlay.max_dd*100).toFixed(0)}%</span>`,'overlay vs buy &amp; hold','' ],
-    ['Plain base B — Sharpe', q.B.sharpe.toFixed(2),'2004–2026, net 10 bps',''],
+    ['US equity max drawdown', `${(A.buy_hold.max_dd*100).toFixed(0)}%→<span class="neg">${(A.overlay.max_dd*100).toFixed(0)}%</span>`,'overlay vs buy &amp; hold',''],
     ['Single overlay C — Sharpe', q.C.sharpe.toFixed(2),'the operational-ease choice','blue'],
-    ['Per-asset E — Sharpe', q.E.sharpe.toFixed(2),'+0.10 over C, but fragile',''],
-    ['C on inverse-vol — Sharpe', f.C.sharpe.toFixed(2),'weighting closes the gap','pos'],
-    ['Per-asset over C', 'not robust','fails at 20 bps &amp; on inverse-vol','']
+    ['Best per-asset (E) — Sharpe', q.E.sharpe.toFixed(2),'gap to C within one SE',''],
+    ['C on inverse-vol — Sharpe', f.C.sharpe.toFixed(2),'closes the gap (2007–26)','pos'],
+    ['60/40 benchmark — Sharpe', bm.sharpe.toFixed(2),`but ${(bm.max_dd*100).toFixed(0)}% drawdown`,''],
+    ['Per-asset over C', 'not robust','gap inside one std error','']
   ];
   document.getElementById('kpis').innerHTML=cells.map(c=>
     `<div class="kpi"><div class="kpi-label">${c[0]}</div><div class="kpi-val ${c[3]}">${c[1]}</div><div class="kpi-sub">${c[2]}</div></div>`).join('');
 }
+function scatter(d){
+  const q=d.question.metrics, f=d.finding.metrics_ivol, bm=d.question.benchmark.metrics;
+  const pts=[
+    ['B · plain base',q.B,COL.B],['C · single overlay',q.C,COL.C],['D · per-asset',q.D,COL.D],
+    ['E · per-asset',q.E,COL.E],['C · inverse-vol',f.C,COL.ivol],['60/40 benchmark',bm,COL.bench]
+  ];
+  Plotly.newPlot('chartScatter',[{
+    x:pts.map(p=>p[1].max_dd*100), y:pts.map(p=>p[1].sharpe),
+    text:pts.map(p=>p[0]), textposition:'top center', mode:'markers+text',
+    textfont:{size:10,family:'DM Sans'},
+    marker:{size:14,color:pts.map(p=>p[2]),line:{color:'#fff',width:1.5}},
+    hovertemplate:'%{text}<br>Sharpe %{y:.2f}<br>MaxDD %{x:.0f}%<extra></extra>'
+  }],L({showlegend:false,plot_bgcolor:'transparent',
+    xaxis:{title:{text:'max drawdown (%) — shallower →',font:{size:11}},gridcolor:'#eef',linecolor:'#d5d3ca',tickfont:{size:9,family:'JetBrains Mono'},autorange:'reversed'},
+    yaxis:{title:{text:'Sharpe',font:{size:11}},side:'left',gridcolor:'#f0f0ea',linecolor:'#d5d3ca',tickfont:{size:9,family:'JetBrains Mono'}},
+    margin:{t:16,b:44,l:44,r:16}}),CFG);
+}
+function takeaways(d){
+  const items=[
+    ['01','The overlay is a drawdown tool, not an alpha tool','It sharply cuts the worst drawdown on every sleeve (roughly halving it for equities and Treasuries) and gives up ~1.4%/yr of compounding. The risk-adjusted-return edge is small and not statistically significant — the case rests on drawdown.'],
+    ['02','Per-asset vs single is a statistical tie','The Sharpe gap is inside one standard error (bootstrap 95% CI −0.13 to +0.36) and flips with the filter window and the cost assumption. Keep the single overlay because it is far simpler (1 signal vs 8), not because per-asset lost.'],
+    ['03','Weighting is the lead to chase next','Inverse-vol weighting lifts the single overlay toward 60/40 efficiency at a third of the drawdown — but that is one 36-month vol window, p≈0.035, concentrated in the 2008–14 bond bull. A pre-registered follow-up, not an instruction.']
+  ];
+  document.getElementById('takeaways').innerHTML=items.map(i=>
+    `<div class="ta"><div class="n">${i[0]}</div><h3>${i[1]}</h3><p>${i[2]}</p></div>`).join('');
+}
 
+/* ---- Concept ---- */
 function chartA(d){
   const a=d.concept.variant_A;
   Plotly.newPlot('chartA',[
-    {x:a.dates,y:a.buy_hold,name:'buy & hold',line:{color:COL.t3,width:1.6},hovertemplate:'%{y:.2f}<extra>buy & hold</extra>'},
-    {x:a.dates,y:a.overlay,name:'10-month overlay',line:{color:COL.C,width:2.4},hovertemplate:'%{y:.2f}<extra>overlay</extra>'}
-  ],L({yaxis:{type:'log',side:'right',tickfont:{size:9,family:'JetBrains Mono'},gridcolor:'#f0f0ea',linecolor:'#d5d3ca'}}),CFG);
+    {x:a.dates,y:a.overlay,name:'10-month overlay (growth of 1)',line:{color:COL.C,width:2.2},yaxis:'y',hovertemplate:'%{y:.2f}<extra>overlay</extra>'},
+    {x:a.dates,y:a.overlay_dd,name:'overlay drawdown',line:{color:COL.C,width:1},yaxis:'y2',hovertemplate:'%{y:.1f}%<extra>overlay DD</extra>'},
+    {x:a.dates,y:a.bh_dd,name:'buy & hold drawdown',line:{color:COL.t3,width:1,dash:'dot'},yaxis:'y2',hovertemplate:'%{y:.1f}%<extra>buy & hold DD</extra>'}
+  ],L({
+    yaxis:{domain:[0.40,1],type:'log',side:'right',tickfont:{size:9,family:'JetBrains Mono'},gridcolor:'#f0f0ea',linecolor:'#d5d3ca'},
+    yaxis2:{domain:[0,0.30],ticksuffix:'%',side:'right',tickfont:{size:9,family:'JetBrains Mono'},gridcolor:'#f0f0ea',linecolor:'#d5d3ca'},
+    xaxis:{anchor:'y2',gridcolor:'#eeeee8',linecolor:'#d5d3ca',showgrid:false,tickformat:"%b '%y",dtick:'M24',tickfont:{size:9}}
+  }),CFG);
 }
-
 function sleeveTable(d){
   const rows=d.concept.sleeves.map(s=>{
     const better=s.ov_sharpe>=s.bh_sharpe?'pos':'';
@@ -249,87 +374,154 @@ function sleeveTable(d){
     `<thead><tr><th>Sleeve</th><th>Ov Sharpe</th><th>BH Sharpe</th><th>Ov MaxDD</th><th>BH MaxDD</th><th>Proxy-era Sharpe</th><th>Proxy window</th><th>In-mkt</th></tr></thead><tbody>${rows}</tbody>`;
 }
 
+/* ---- Question ---- */
 function chartBCDE(d){
   const q=d.question, order=['B','C','D','E'];
-  Plotly.newPlot('chartBCDE',order.map(v=>({
-    x:q.dates,y:q.curves[v],name:LBL[v],line:{color:COL[v],width:v==='C'?2.6:1.5},
-    hovertemplate:'%{y:.2f}<extra>'+v+'</extra>'})),
-    L({yaxis:{type:'log',side:'right',tickfont:{size:9,family:'JetBrains Mono'},gridcolor:'#f0f0ea',linecolor:'#d5d3ca'}}),CFG);
+  const traces=order.map(v=>({x:q.dates,y:q.curves[v],name:LBL[v],line:{color:COL[v],width:v==='C'?2.6:1.5},hovertemplate:'%{y:.2f}<extra>'+v+'</extra>'}));
+  traces.push({x:q.dates,y:q.benchmark.curve,name:q.benchmark.label,line:{color:COL.bench,width:1.3,dash:'dot'},hovertemplate:'%{y:.2f}<extra>60/40</extra>'});
+  Plotly.newPlot('chartBCDE',traces,L({yaxis:logY()}),CFG);
 }
 function chartDD(d){
   const q=d.question, order=['B','C','D','E'];
-  Plotly.newPlot('chartDD',order.map(v=>({
-    x:q.dates,y:q.drawdowns[v],name:LBL[v],line:{color:COL[v],width:v==='C'?2.2:1.3},
-    hovertemplate:'%{y:.1f}%<extra>'+v+'</extra>'})),L({yaxis:{ticksuffix:'%',side:'right',tickfont:{size:9,family:'JetBrains Mono'},gridcolor:'#f0f0ea',linecolor:'#d5d3ca'}}),CFG);
+  const traces=order.map(v=>({x:q.dates,y:q.drawdowns[v],name:LBL[v],line:{color:COL[v],width:v==='C'?2.2:1.3},hovertemplate:'%{y:.1f}%<extra>'+v+'</extra>'}));
+  traces.push({x:q.dates,y:q.benchmark.drawdown,name:q.benchmark.label,line:{color:COL.bench,width:1.2,dash:'dot'},hovertemplate:'%{y:.1f}%<extra>60/40</extra>'});
+  Plotly.newPlot('chartDD',traces,L({yaxis:{ticksuffix:'%',side:'right',tickfont:{size:9,family:'JetBrains Mono'},gridcolor:'#f0f0ea',linecolor:'#d5d3ca'}}),CFG);
 }
-
 function metricRow(v,m,keep){
   const cls=keep?' class="row-keep"':'';
-  return `<tr${cls}><td>${LBL[v]}</td><td>${pct(m.cagr)}</td><td>${pct(m.vol)}</td>
+  return `<tr${cls}><td>${LBL[v]||v}</td><td>${pct(m.cagr)}</td><td>${pct(m.vol)}</td>
     <td><strong>${m.sharpe.toFixed(2)}</strong></td><td>${m.sortino.toFixed(2)}</td>
     <td class="neg">${pct(m.max_dd)}</td><td>${m.ulcer.toFixed(1)}</td>
-    <td>${(m.time_in_market*100).toFixed(0)}%</td><td>${(m.ann_turnover*100).toFixed(0)}%</td>
-    <td>${m.whipsaw_roundtrips_per_decade.toFixed(0)}</td></tr>`;
+    <td>${m.time_in_market!=null?(m.time_in_market*100).toFixed(0)+'%':'—'}</td>
+    <td>${m.ann_turnover!=null?(m.ann_turnover*100).toFixed(0)+'%':'—'}</td>
+    <td>${m.whipsaw_roundtrips_per_decade!=null?m.whipsaw_roundtrips_per_decade.toFixed(0):'—'}</td></tr>`;
 }
 const METRIC_HEAD=`<thead><tr><th>Variant</th><th>CAGR</th><th>Vol</th><th>Sharpe</th><th>Sortino</th><th>Max DD</th><th>Ulcer</th><th>In-mkt</th><th>Turnover</th><th>Whip/dec</th></tr></thead>`;
-
 function eqTable(d){
-  const m=d.question.metrics;
-  document.getElementById('eqTable').innerHTML=METRIC_HEAD+'<tbody>'+
-    ['B','C','D','E'].map(v=>metricRow(v,m[v],v==='C')).join('')+'</tbody>';
+  const m=d.question.metrics, bm=d.question.benchmark;
+  let body=['B','C','D','E'].map(v=>metricRow(v,m[v],v==='C')).join('');
+  body+=`<tr class="row-bench"><td>${bm.label} (passive)</td><td>${pct(bm.metrics.cagr)}</td><td>${pct(bm.metrics.vol)}</td><td><strong>${bm.metrics.sharpe.toFixed(2)}</strong></td><td>${bm.metrics.sortino.toFixed(2)}</td><td>${pct(bm.metrics.max_dd)}</td><td>${bm.metrics.ulcer.toFixed(1)}</td><td>100%</td><td>—</td><td>—</td></tr>`;
+  document.getElementById('eqTable').innerHTML=METRIC_HEAD+'<tbody>'+body+'</tbody>';
   const dec=d.question.decision;
   document.getElementById('decisionNote').innerHTML=
-    `Frozen rule — prefer per-asset only if Sharpe ≥ C + 0.10 and drawdown no worse, surviving 10 bps.
-     <strong>E</strong> ${sg(dec.E.sharpe_delta_vs_C)} vs C <span class="tag ${dec.E.PASSES_RULE?'tag-pass':'tag-fail'}">${dec.E.PASSES_RULE?'meets @10bps':'fails'}</span>
-     &nbsp; <strong>D</strong> ${sg(dec.D.sharpe_delta_vs_C)} vs C <span class="tag tag-fail">fails</span>
-     &nbsp;— but E's pass is a knife-edge (see §3).`;
+    `Per-asset vs single at 10 bps: <strong>E</strong> ${sg(dec.E.sharpe_delta_vs_C)} Sharpe, <strong>D</strong> ${sg(dec.D.sharpe_delta_vs_C)} — both inside one standard error (see the Robustness tab). Under the frozen rule E technically passes; it is set aside on indistinguishability grounds. Note the passive 60/40 out-Sharpes the equal-weight base and ties E — here the overlay's contribution is drawdown, not return.`;
 }
 
+/* ---- Lever ---- */
 function chartBars(d){
   const m=d.finding.matched, vs=['B','C','D','E'];
   Plotly.newPlot('chartBars',[
-    {x:vs,y:vs.map(v=>m.equal_weight[v].sharpe),name:'equal-weight',type:'bar',marker:{color:'#c9c7bf'},
-     hovertemplate:'%{y:.2f}<extra>equal-weight %{x}</extra>'},
-    {x:vs,y:vs.map(v=>m.inverse_vol[v].sharpe),name:'inverse-vol',type:'bar',marker:{color:COL.C},
-     hovertemplate:'%{y:.2f}<extra>inverse-vol %{x}</extra>'}
-  ],L({barmode:'group',margin:{t:14,b:24,l:12,r:52},yaxis:{side:'right',title:{text:'Sharpe',font:{size:10}},tickfont:{size:9,family:'JetBrains Mono'},gridcolor:'#f0f0ea',linecolor:'#d5d3ca'},xaxis:{tickfont:{size:11}}}),CFG);
+    {x:vs,y:vs.map(v=>m.equal_weight[v].sharpe),name:'equal-weight',type:'bar',marker:{color:'#c9c7bf'},hovertemplate:'%{y:.2f}<extra>equal-weight %{x}</extra>'},
+    {x:vs,y:vs.map(v=>m.inverse_vol[v].sharpe),name:'inverse-vol',type:'bar',marker:{color:COL.ivol},hovertemplate:'%{y:.2f}<extra>inverse-vol %{x}</extra>'}
+  ],L({barmode:'group',yaxis:{side:'right',title:{text:'Sharpe',font:{size:10}},tickfont:{size:9,family:'JetBrains Mono'},gridcolor:'#f0f0ea',linecolor:'#d5d3ca'},xaxis:{tickfont:{size:11}}}),CFG);
 }
 function chartCiv(d){
   const c=d.finding.curves;
   Plotly.newPlot('chartCiv',[
     {x:c.dates,y:c.B_ivol,name:'base (inverse-vol)',line:{color:COL.t3,width:1.4,dash:'dot'},hovertemplate:'%{y:.2f}<extra>base iv</extra>'},
-    {x:c.dates,y:c.C_equal,name:'C · equal-weight',line:{color:COL.a2||'#c9a24a',width:1.6},hovertemplate:'%{y:.2f}<extra>C equal</extra>'},
+    {x:c.dates,y:c.C_equal,name:'C · equal-weight',line:{color:'#c9a24a',width:1.6},hovertemplate:'%{y:.2f}<extra>C equal</extra>'},
     {x:c.dates,y:c.C_ivol,name:'C · inverse-vol',line:{color:COL.C,width:2.6},hovertemplate:'%{y:.2f}<extra>C inv-vol</extra>'}
-  ],L({yaxis:{type:'log',side:'right',tickfont:{size:9,family:'JetBrains Mono'},gridcolor:'#f0f0ea',linecolor:'#d5d3ca'}}),CFG);
+  ],L({yaxis:logY()}),CFG);
 }
 function ivTable(d){
   const m=d.finding.metrics_ivol;
-  document.getElementById('ivTable').innerHTML=METRIC_HEAD+'<tbody>'+
-    ['B','C','D','E'].map(v=>metricRow(v,m[v],v==='C')).join('')+'</tbody>';
+  document.getElementById('ivTable').innerHTML=METRIC_HEAD+'<tbody>'+['B','C','D','E'].map(v=>metricRow(v,m[v],v==='C')).join('')+'</tbody>';
 }
 function callout(d){
-  const eqC=d.finding.matched.equal_weight.C.sharpe, ivC=d.finding.matched.inverse_vol.C.sharpe;
-  const ivE=d.finding.matched.inverse_vol.E.sharpe;
+  const eqC=d.finding.matched.equal_weight.C.sharpe, ivC=d.finding.matched.inverse_vol.C.sharpe, ivE=d.finding.matched.inverse_vol.E.sharpe;
   document.getElementById('calloutBody').innerHTML=
-    `On the matched window, risk-balancing lifts the single overlay from <strong>${eqC.toFixed(2)}</strong> to <strong>${ivC.toFixed(2)}</strong> Sharpe — and the best per-asset variant only reaches ${ivE.toFixed(2)}. The per-asset overlay costs eight signals and far higher turnover for no durable risk-adjusted gain, so the operationally simple single overlay stands. The productive next step is the <em>weighting</em> of the base, not the granularity of the overlay.`;
+    `On the matched 2007–2026 window, risk-balancing lifts the single overlay from <strong>${eqC.toFixed(2)}</strong> to <strong>${ivC.toFixed(2)}</strong> Sharpe, and per-asset (E ${ivE.toFixed(2)}) no longer clears the bar over it — so per-asset reads as a substitute for weighting. But that lift is one vol-window and largely the 2008–14 bond era (p≈0.035), so treat it as the next study's hypothesis. What is safe to act on today is the parsimony call: keep the single overlay.`;
 }
 
-function cluster(d){
-  const c=d.clustered_exit, s=c.summary;
-  document.getElementById('clusterLede').innerHTML=
-    `In <strong>${s.pct_of_sample}%</strong> of months, more than 60% of the eight blocks were out at once — clustered around the GFC, 2015–16, COVID and 2022.`;
+/* ---- Robustness ---- */
+function chartCost(d){
+  const cs=d.question.cost_sweep, bps=['0','5','10','20'];
+  Plotly.newPlot('chartCost',[
+    {x:bps,y:bps.map(b=>cs[b].E-cs[b].C),name:'E − C',type:'bar',marker:{color:bps.map(b=>(cs[b].E-cs[b].C)>=0.10?COL.g:COL.r)},hovertemplate:'%{y:+.3f}<extra>%{x} bps</extra>'}
+  ],L({showlegend:false,shapes:[{type:'line',x0:-0.5,x1:3.5,y0:0.10,y1:0.10,line:{color:COL.t3,width:1,dash:'dash'}}],
+    annotations:[{x:3.5,y:0.10,xanchor:'right',yanchor:'bottom',text:'+0.10 hurdle',font:{size:9,color:'#8a8a82'},showarrow:false}],
+    yaxis:{side:'right',title:{text:'Sharpe advantage over C',font:{size:10}},tickfont:{size:9,family:'JetBrains Mono'},gridcolor:'#f0f0ea',linecolor:'#d5d3ca'},
+    xaxis:{title:{text:'one-way cost (bps)',font:{size:10}},tickfont:{size:10}}}),CFG);
+}
+function chartCluster(d){
+  const c=d.clustered_exit;
   Plotly.newPlot('chartCluster',[
-    {x:c.dates,y:c.frac_out,type:'scatter',fill:'tozeroy',mode:'lines',line:{color:COL.C,width:1},
-     fillcolor:'rgba(37,99,235,0.12)',name:'% out',hovertemplate:'%{y:.0f}% out<extra></extra>'}
+    {x:c.dates,y:c.frac_out,type:'scatter',fill:'tozeroy',mode:'lines',line:{color:COL.C,width:1},fillcolor:'rgba(37,99,235,0.12)',name:'% out',hovertemplate:'%{y:.0f}% out<extra></extra>'}
   ],L({showlegend:false,shapes:[{type:'line',x0:c.dates[0],x1:c.dates[c.dates.length-1],y0:60,y1:60,line:{color:COL.r,width:1,dash:'dash'}}],
-      yaxis:{range:[0,100],ticksuffix:'%',side:'right',tickfont:{size:9,family:'JetBrains Mono'},gridcolor:'#f0f0ea',linecolor:'#d5d3ca'}}),CFG);
-  const inc=s.mean_pct_ret_in_cluster_months, aft=s.mean_pct_ret_month_after_cluster;
-  document.getElementById('clusterNote').innerHTML=
-    `In cluster months the per-asset book was mildly protective (D ${sg(inc.D)}%/mo) while the single overlay lagged (C ${sg(inc.C)}%/mo). But the month <em>after</em> a broad exit, the always-invested base captured ${sg(aft.B)}% versus D's ${sg(aft.D)}% — the rebound the overlay gives up. Protective in real crises, whipsaw-costly at V-shaped bottoms.`;
+    yaxis:{range:[0,100],ticksuffix:'%',side:'right',tickfont:{size:9,family:'JetBrains Mono'},gridcolor:'#f0f0ea',linecolor:'#d5d3ca'}}),CFG);
+}
+function robustNotes(d){
+  const cs=d.question.cost_sweep;
+  document.getElementById('costNote').innerHTML=`E clears the +0.10 hurdle over C at 0/5/10 bps (${sg(cs['10'].E-cs['10'].C,3)} at 10) but <strong>fails at 20 bps</strong> (${sg(cs['20'].E-cs['20'].C,3)}). D never clears. The verdict is one cost assumption away either way — a knife-edge.`;
+  const s=d.clustered_exit.summary, inc=s.mean_pct_ret_in_cluster_months, aft=s.mean_pct_ret_month_after_cluster;
+  document.getElementById('clusterNote').innerHTML=`${s.pct_of_sample}% of months had >60% of blocks out at once (GFC, 2015–16, 2020, 2022). Protective then (D ${sg(inc.D)}%/mo) but the month <em>after</em> a broad exit the base captured ${sg(aft.B)}% vs D's ${sg(aft.D)}% — the rebound given up.`;
+}
+function ruleTable(d){
+  const dec=d.question.decision, di=d.finding.decision_ivol;
+  const row=(scheme,x)=>`<tr><td>${scheme}</td><td>${x.c_sharpe.toFixed(2)}</td>
+    <td>${sg(x.D.sharpe_delta_vs_C)}<span class="tag ${x.D.PASSES_RULE?'tag-pass':'tag-fail'}">${x.D.PASSES_RULE?'pass':'fail'}</span></td>
+    <td>${sg(x.E.sharpe_delta_vs_C)}<span class="tag ${x.E.PASSES_RULE?'tag-pass':'tag-fail'}">${x.E.PASSES_RULE?'pass':'fail'}</span></td></tr>`;
+  document.getElementById('ruleTable').innerHTML=
+    `<thead><tr><th>Weighting scheme (10 bps)</th><th>C Sharpe</th><th>D vs C</th><th>E vs C</th></tr></thead><tbody>${row('Equal-weight',dec)}${row('Inverse-vol',di)}${row('Narrowed (trend-strong)',d.robustness.narrowed)}</tbody>`;
+}
+function renderBoot(d){
+  const b=d.robustness.bootstrap.E_minus_C;
+  document.getElementById('bootBox').innerHTML=
+    `<div class="lab">E − C Sharpe · 95% bootstrap interval</div>
+     <div class="ci">[${b.ci95[0].toFixed(2)}, ${b.ci95[1].toFixed(2)}]</div>
+     <div class="p">observed ${sg(b.observed)} · P(clears +0.10) = ${(b['p_ge_0.10']*100).toFixed(0)}% · P(≤0) = ${(b['p_le_0']*100).toFixed(0)}%</div>`;
+  const sma=d.robustness.sma;
+  const rows=Object.keys(sma).map(w=>{const x=sma[w];
+    return `<tr${w==='10'?' class="row-keep"':''}><td>SMA-${w}${w==='10'?' (deployed)':''}</td><td>${x.C.toFixed(2)}</td><td>${sg(x.E_minus_C,3)}</td><td>${sg(x.D_minus_C,3)}</td><td><span class="tag ${x['E_passes_0.10_bar']?'tag-pass':'tag-fail'}">${x['E_passes_0.10_bar']?'pass':'fail'}</span></td></tr>`;}).join('');
+  document.getElementById('smaTable').innerHTML=
+    `<thead><tr><th>Filter</th><th>C Sharpe</th><th>E − C</th><th>D − C</th><th>E vs +0.10</th></tr></thead><tbody>${rows}</tbody>`;
+  document.getElementById('bootNote').innerHTML=
+    `The decision bar (+0.10 Sharpe) is about one standard error on 22 years of monthly data, so the "pass" is a coin flip — and it exists only at the deployed 10-month filter, not at 8 or 12 months. That is why the verdict rests on simplicity, not on the point estimate.`;
+}
+
+/* ---- Method ---- */
+function methodTable(d){
+  // reconciliation lives in ws0; approximate from params note — build from sleeves' inception context is not exported,
+  // so show the block roster with proxy kinds hard-coded to match PRE_REGISTRATION §3 (labels only, no values).
+  const rows=[
+    ['US equity','SPY','S&P 500 TR index','1988','clean'],
+    ['Dev ex-US','EFA','iShares MSCI EAFE (fund)','2001','n/a'],
+    ['EM equity','EEM','iShares MSCI EM (fund)','2003','n/a'],
+    ['Long Treasuries','TLT','synthetic par-bond (25y)','1977','clean'],
+    ['Interm Treasuries','IEF','synthetic par-bond (8.5y)','1962','clean'],
+    ['REITs','VNQ','DJ US Select REIT TR','1996','clean'],
+    ['Broad commodity','DBC','Bloomberg Commodity TR','1991','basis'],
+    ['Gold','GLD','LBMA gold spot','1982','clean'],
+    ['Cash','BIL','synthetic 3m T-bill TR','1960','basis']
+  ];
+  const flag=f=>f==='clean'?'<span class="pos">clean</span>':(f==='basis'?'<span style="color:var(--a)">basis</span>':'<span style="color:var(--t3)">n/a</span>');
+  document.getElementById('methodTable').innerHTML=
+    `<thead><tr><th>Block</th><th>ETF</th><th>Pre-ETF proxy</th><th>From</th><th>Recon</th></tr></thead><tbody>`+
+    rows.map(r=>`<tr><td>${r[0]}</td><td class="mono">${r[1]}</td><td style="font-family:var(--sans);text-align:right;color:var(--t2)">${r[2]}</td><td>${r[3]}</td><td>${flag(r[4])}</td></tr>`).join('')+`</tbody>`;
 }
 
 function caveats(d){
-  document.getElementById('caveatList').innerHTML=d.meta.caveats.map(c=>`<li>${c}</li>`).join('');
+  const b=d.robustness.bootstrap.E_minus_C;
+  document.getElementById('caveatList').innerHTML=[
+    `<strong>The differences are inside the noise.</strong> The per-asset-minus-single Sharpe gap has a bootstrap 95% interval of [${b.ci95[0].toFixed(2)}, ${b.ci95[1].toFixed(2)}] and only a ${(b['p_ge_0.10']*100).toFixed(0)}% chance of clearing the +0.10 bar. Every pass/fail statement sits within sampling error; "keep C" is a parsimony default, not a measured win.`,
+    '<strong>The frozen rule actually passed E.</strong> E met the pre-registered +0.10 bar at 10 bps; it is set aside on robustness and indistinguishability grounds, and that override is disclosed, not hidden.',
+    '<strong>Filter- and cost-fragile.</strong> The per-asset pass exists at the 10-month filter but not at 8 or 12 months, and not at 20 bps one-way.',
+    '<strong>Two-episode window.</strong> The 2004–2026 comparison rests on one GFC and one 2022; outside crises the overlay bleeds relative to buy-and-hold, and effective independent observations are few.',
+    '<strong>Inverse-vol is one parameterisation.</strong> The "weighting lever" is a single 36-month vol window, concentrated in the 2008–14 bond bull (p≈0.035) — a follow-up hypothesis, not a conclusion.',
+    '<strong>Not a return story.</strong> A passive 60/40 matches the overlays on Sharpe and beats them on CAGR (C-on-inverse-vol gives up ~2.4%/yr); the overlay wins only on drawdown depth. Whether that trade suits you depends on your mandate.',
+    '<strong>Synthetic deep history.</strong> Pre-2004 Treasury history uses modelled constant-maturity par-bond series (reconciled to the ETF, corr 0.99) — clean, but modelled.',
+    '<strong>No live/paper track; educational and personal.</strong> A backtest, not deployed or capital-backed; not investment advice and not a product.'
+  ].map(c=>`<li>${c}</li>`).join('');
+}
+
+/* ---- tab wiring ---- */
+function wireTabs(){
+  document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+    const name=t.dataset.tab;
+    document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===t));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));
+    requestAnimationFrame(()=>document.querySelectorAll('#tab-'+name+' .js-plotly-plot').forEach(g=>Plotly.Plots.resize(g)));
+  }));
 }
 
 load().then(d=>{
@@ -337,9 +529,12 @@ load().then(d=>{
   const gen=(d.meta.generated_utc||'').slice(0,10);
   document.getElementById('pill-date').textContent=gen;
   document.getElementById('genstamp').textContent='generated '+gen+' · monthly panel';
-  kpis(d); chartA(d); sleeveTable(d);
+  kpis(d); scatter(d); takeaways(d);
+  chartA(d); sleeveTable(d);
   chartBCDE(d); chartDD(d); eqTable(d);
   chartBars(d); chartCiv(d); ivTable(d); callout(d);
-  cluster(d); caveats(d);
+  chartCost(d); chartCluster(d); robustNotes(d); ruleTable(d); renderBoot(d); caveats(d);
+  methodTable(d);
+  wireTabs();
 }).catch(e=>{document.getElementById('loading').textContent='Could not load data: '+e.message;});
 </script>

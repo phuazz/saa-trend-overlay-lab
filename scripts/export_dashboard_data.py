@@ -70,9 +70,13 @@ def main() -> int:
     bhA = E.assemble(E.buy_hold_sleeve(levels, E.US_EQUITY), rA, cash_ret, 0.0)
     idxA = ovA.net.index
     variant_A = {
+        # licence: publish the DERIVED overlay strategy curve + drawdowns only.
+        # The raw buy-&-hold growth curve is the rebased vendor TR series, so it
+        # is NOT exported — buy-&-hold appears only as a drawdown (a derived %).
         "dates": _dates(idxA),
         "overlay": _growth(ovA.net),
-        "buy_hold": _growth(bhA.net.reindex(idxA)),
+        "overlay_dd": _dd(ovA.net),
+        "bh_dd": _dd(bhA.net.reindex(idxA)),
         "metrics": {"overlay": _metrics_row(WS1["variant_A"]["overlay"]),
                     "buy_hold": _metrics_row(WS1["variant_A"]["buy_hold"])},
     }
@@ -104,6 +108,18 @@ def main() -> int:
         "cost_sweep": {bps: {v: round(WS2["schemes"]["equal_weight"]["by_cost"][bps][v]["sharpe"], 3)
                              for v in ("C", "D", "E")}
                        for bps in ("0", "5", "10", "20")},
+    }
+    # passive 60/40 benchmark (60% US equity / 40% interm Treasuries), monthly
+    # rebalanced, gross — the "do nothing clever" reference an allocator asks for
+    bench_blocks = ["US equity", "Interm Treasuries"]
+    W6040 = pd.DataFrame({b: (0.6 if b == "US equity" else 0.4) for b in bench_blocks},
+                         index=common_eq)
+    a6040 = E.assemble(W6040, E.monthly_returns(levels[bench_blocks]), cash_ret, 0.0)
+    question["benchmark"] = {
+        "label": "60/40 (SPY/IEF)",
+        "curve": _growth(a6040.net),
+        "drawdown": _dd(a6040.net),
+        "metrics": _metrics_row(E.metrics(a6040.net, cash_ret, a6040.invested)),
     }
 
     # ---- FINDING (inverse-vol): matched bars + ivol metrics + C curves ----
@@ -152,6 +168,11 @@ def main() -> int:
         "question": question,
         "finding": finding,
         "clustered_exit": clustered,
+        "robustness": {
+            "sma": WS2["sma_robustness"],
+            "bootstrap": WS2["bootstrap_sharpe_diff"],
+            "narrowed": WS2["verdicts"]["narrowed_trend_strong"],
+        },
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
